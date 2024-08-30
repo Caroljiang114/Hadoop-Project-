@@ -1,0 +1,48 @@
+#put the local files into sandbox
+C:\Users\10485>scp -P 2222 "C:\Users\10485\Desktop\Big Data Analytics\Hadoop\testresult.csv" root@127.0.0.1:/media/sf_Ha
+doop
+
+#enter root@sandbox
+ssh root@127.0.0.1 -p 2222
+
+#put the file into hdfs
+hdfs dfs -put ~/media/sf_Hadoop/StudentGrades.csv /tmp
+hdfs dfs -put /media/sf_Hadoop/testresult.csv /tmp
+
+#remove the first row of data
+sed -i '1d' ~/StudentGrades.csv
+sed -i '1d' ~/testresult.csv
+
+#go to Hbase 
+su hbase
+hbase shell
+
+#Create tables
+create 'testresult','result'
+create 'StudentGrades','Grades'
+
+#move data from data files into Hbase tables
+hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.separator=, -Dimporttsv.columns="HBASE_ROW_KEY, Grades:Sid, Grades:examname, Grades:result" StudentGrades /tmp/StudentGrades.csv
+
+hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.separator=, -Dimporttsv.columns="HBASE_ROW_KEY, result:Timestamp, result:Data, result:type, result:Sid, result:examname" testresult /tmp/testresult.csv
+
+#Create view in phoenix
+create view "StudentGrades" (
+"row" VARCHAR primary key,
+"Grades"."Sid" VARCHAR,
+"Grades"."examname" VARCHAR,
+"Grades"."result" VARCHAR);
+
+create view "testresult" (
+"row" VARCHAR primary key,
+"result"."Timestamp" VARCHAR,
+"result"."Data" VARCHAR,
+"result"."type" VARCHAR,
+"result"."Sid" VARCHAR,
+"result"."examname" VARCHAR);
+
+
+#Copy output file to local machine
+PS C:\Users\10485> cd .\Downloads\
+PS C:\Users\10485\Downloads> scp -P 2222 root@127.0.0.1:/data.csv .
+
